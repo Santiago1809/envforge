@@ -54,6 +54,12 @@ go install github.com/Santiago1809/envforge/cmd/envforge@latest
 The binary will be placed in `$GOPATH/bin` (usually `~/go/bin`).
 Make sure that directory is in your PATH (see platform instructions below).
 
+> **Note:** `go install` will show version "dev" — this is expected because the
+> version is injected at build time by GoReleaser. To get the correct version
+> string, download the binary from GitHub Releases. Also note that the
+> `envforge update` command only works correctly when installed via the GitHub
+> Releases binary, not via `go install`.
+
 ---
 
 ### Option 2 — Download Binary

@@ -57,6 +57,7 @@ func init() {
 	rootCmd.AddCommand(verifyCmd)
 	rootCmd.AddCommand(watchCmd)
 	rootCmd.AddCommand(infoCmd)
+	rootCmd.AddCommand(tuiCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(completionCmd)
@@ -92,6 +93,14 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("envforge version %s\n", Version)
 		fmt.Printf("  commit: %s\n", commit)
 		fmt.Printf("  date: %s\n", date)
+	},
+}
+
+var tuiCmd = &cobra.Command{
+	Use:   "tui",
+	Short: "Open interactive TUI",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return RunTUI()
 	},
 }
 
