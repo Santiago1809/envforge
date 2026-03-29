@@ -295,11 +295,17 @@ var updateCmd = &cobra.Command{
 
 			newExePathAbs := filepath.Join(installDirAbs, "envforge_new.exe")
 
+			pid := os.Getpid()
 			batchContent := fmt.Sprintf(`@echo off
-timeout /t 1 /nobreak > nul
+:waitloop
+tasklist /FI "PID eq %d" 2>nul | findstr %d > nul
+if not errorlevel 1 (
+	timeout /t 1 /nobreak > nul
+	goto waitloop
+)
 move /y "%s" "%s"
-del "%s"
-`, newExePathAbs, selfPathAbs, "%~f0")
+del "%%~f0"
+`, pid, pid, newExePathAbs, selfPathAbs)
 
 			batchPath := filepath.Join(os.TempDir(), "envforge_update.bat")
 			if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
@@ -307,7 +313,7 @@ del "%s"
 				return fmt.Errorf("failed to write batch script: %w", err)
 			}
 
-			cmd := exec.Command("cmd", "/c", "start", "", batchPath)
+			cmd := exec.Command("cmd", "/c", batchPath)
 			detachProcess(cmd)
 			if err := cmd.Start(); err != nil {
 				os.Remove(newExePath)
