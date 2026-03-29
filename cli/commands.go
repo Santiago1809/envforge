@@ -6,9 +6,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Santiago1809/envforge/internal/auditor"
@@ -204,25 +207,77 @@ var updateCmd = &cobra.Command{
 			return fmt.Errorf("failed to get executable path: %w", err)
 		}
 
-		tmpPath := selfPath + ".tmp"
-		tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
-		if err != nil {
-			return fmt.Errorf("failed to create temp file: %w", err)
-		}
+		if runtime.GOOS == "windows" {
+			tmpPath := filepath.Join(os.TempDir(), "envforge.exe.tmp")
+			tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create temp file: %w", err)
+			}
 
-		_, err = io.Copy(tmpFile, downloadResp.Body)
-		tmpFile.Close()
-		if err != nil {
-			os.Remove(tmpPath)
-			return fmt.Errorf("failed to write binary: %w", err)
-		}
+			_, err = io.Copy(tmpFile, downloadResp.Body)
+			tmpFile.Close()
+			if err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to write binary: %w", err)
+			}
 
-		if err := os.Rename(tmpPath, selfPath); err != nil {
-			os.Remove(tmpPath)
-			return fmt.Errorf("failed to replace binary: %w", err)
-		}
+			selfPathAbs, err := filepath.Abs(selfPath)
+			if err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to get absolute path: %w", err)
+			}
 
-		fmt.Printf("Updated to %s successfully\n", latestVersion)
+			tmpPathAbs, err := filepath.Abs(tmpPath)
+			if err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to get absolute path: %w", err)
+			}
+
+			batchContent := fmt.Sprintf(`@echo off
+timeout /t 1 /nobreak > nul
+move /y "%s" "%s"
+del "%s"
+`, tmpPathAbs, selfPathAbs, "%~f0")
+
+			batchPath := filepath.Join(os.TempDir(), "envforge_update.bat")
+			if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to write batch script: %w", err)
+			}
+
+			cmd := exec.Command("cmd", "/c", "start", "", batchPath)
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				CreationFlags: 0x08000000,
+			}
+			if err := cmd.Start(); err != nil {
+				os.Remove(tmpPath)
+				os.Remove(batchPath)
+				return fmt.Errorf("failed to start batch script: %w", err)
+			}
+
+			fmt.Println("Update will complete in a moment, please restart your terminal")
+			os.Exit(0)
+		} else {
+			tmpPath := selfPath + ".tmp"
+			tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+			if err != nil {
+				return fmt.Errorf("failed to create temp file: %w", err)
+			}
+
+			_, err = io.Copy(tmpFile, downloadResp.Body)
+			tmpFile.Close()
+			if err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to write binary: %w", err)
+			}
+
+			if err := os.Rename(tmpPath, selfPath); err != nil {
+				os.Remove(tmpPath)
+				return fmt.Errorf("failed to replace binary: %w", err)
+			}
+
+			fmt.Printf("Updated to %s successfully\n", latestVersion)
+		}
 		return nil
 	},
 }
