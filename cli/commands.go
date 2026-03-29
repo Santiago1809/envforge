@@ -207,7 +207,17 @@ var updateCmd = &cobra.Command{
 		}
 
 		if runtime.GOOS == "windows" {
-			tmpPath := filepath.Join(os.TempDir(), "envforge.exe.tmp")
+			localAppData := os.Getenv("LOCALAPPDATA")
+			if localAppData == "" {
+				return fmt.Errorf("LOCALAPPDATA not set")
+			}
+
+			installDir := filepath.Join(localAppData, "envforge")
+			if err := os.MkdirAll(installDir, 0755); err != nil {
+				return fmt.Errorf("failed to create install directory: %w", err)
+			}
+
+			tmpPath := filepath.Join(installDir, "envforge.exe.tmp")
 			tmpFile, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 			if err != nil {
 				return fmt.Errorf("failed to create temp file: %w", err)
@@ -226,11 +236,13 @@ var updateCmd = &cobra.Command{
 				return fmt.Errorf("failed to get absolute path: %w", err)
 			}
 
-			tmpPathAbs, err := filepath.Abs(tmpPath)
+			installDirAbs, err := filepath.Abs(installDir)
 			if err != nil {
 				os.Remove(tmpPath)
 				return fmt.Errorf("failed to get absolute path: %w", err)
 			}
+
+			tmpPathAbs := filepath.Join(installDirAbs, "envforge.exe.tmp")
 
 			batchContent := fmt.Sprintf(`@echo off
 timeout /t 1 /nobreak > nul
