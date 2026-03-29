@@ -91,7 +91,7 @@ Download the latest release for your platform from
    - Click OK on all dialogs
 4. Open a **new** terminal and verify:
 ```bash
-   envforge --version
+   envforge version
 ```
 
 ---
