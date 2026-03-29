@@ -20,7 +20,8 @@ builds:
       - arm64
 
 archives:
-  - formats:
+  - id: default
+    formats:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
@@ -31,8 +32,16 @@ archives:
       - README.md
       - LICENSE
 
-extra_files:
-  - glob: ./dist/envoy_windows_amd64_v1/*.exe
+  - id: windows-exe
+    builds:
+      - envoy
+    goos:
+      - windows
+    goarch:
+      - amd64
+    formats:
+      - zip
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}_exe"
 
 changelog:
   sort: asc
