@@ -1,11 +1,11 @@
-# envoy
+# envforge
 
-[![Build Status](https://img.shields.io/github/actions/workflow/status/Santiago1809/envoy/release.yml)](https://github.com/Santiago1809/envoy/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/Santiago1809/envforge/release.yml)](https://github.com/Santiago1809/envforge/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://golang.org/dl/)
-[![Platform Support](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Santiago1809/envoy/releases)
+[![Platform Support](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Santiago1809/envforge/releases)
 
-A smart environment variable manager for developers. Envoy helps you compare, sync, audit, encrypt, and watch your `.env` files with zero configuration.
+A smart environment variable manager for developers. Envforge helps you compare, sync, audit, encrypt, and watch your `.env` files with zero configuration.
 
 ## The Problem
 
@@ -15,17 +15,17 @@ Managing environment variables across projects is chaotic:
 - Sharing secrets with teammates is risky
 - No way to validate env vars before running your app
 
-Envoy solves all of this with a single CLI.
+Envforge solves all of this with a single CLI.
 
 ## Quick Demo
 
 ```bash
 # Check your env vars are set before running
-$ envoy check --from .env.example
+$ envforge check --from .env.example
 All required environment variables are set
 
 # See what's different between .env and .env.example
-$ envoy diff
+$ envforge diff
 MISSING in .env (1):
   + API_KEY
 
@@ -33,7 +33,7 @@ EXTRA in .env (1):
   - MY_LOCAL_VAR
 
 # Audit your code to find used but undeclared vars
-$ envoy audit ./src --env-file .env.example
+$ envforge audit ./src --env-file .env.example
 USED but NOT DECLARED (2):
   + DATABASE_URL (src/db.go:15)
   + JWT_SECRET (src/auth.go:8)
@@ -48,7 +48,7 @@ DECLARED but NOT USED (1):
 
 If you have Go installed:
 ```bash
-go install github.com/Santiago1809/envoy/cmd/envoy@latest
+go install github.com/Santiago1809/envforge/cmd/envforge@latest
 ```
 
 The binary will be placed in `$GOPATH/bin` (usually `~/go/bin`).
@@ -59,33 +59,33 @@ Make sure that directory is in your PATH (see platform instructions below).
 ### Option 2 — Download Binary
 
 Download the latest release for your platform from
-[GitHub Releases](https://github.com/Santiago1809/envoy/releases):
+[GitHub Releases](https://github.com/Santiago1809/envforge/releases):
 
 | Platform | File |
 |---|---|
-| Windows (64-bit) | `envoy_windows_amd64.zip` |
-| macOS (Apple Silicon) | `envoy_darwin_arm64.tar.gz` |
-| macOS (Intel) | `envoy_darwin_amd64.tar.gz` |
-| Linux (64-bit) | `envoy_linux_amd64.tar.gz` |
-| Linux (ARM) | `envoy_linux_arm64.tar.gz` |
+| Windows (64-bit) | `envforge_windows_amd64.zip` |
+| macOS (Apple Silicon) | `envforge_darwin_arm64.tar.gz` |
+| macOS (Intel) | `envforge_darwin_amd64.tar.gz` |
+| Linux (64-bit) | `envforge_linux_amd64.tar.gz` |
+| Linux (ARM) | `envforge_linux_arm64.tar.gz` |
 
 ---
 
 ### Windows Setup
 
-1. Download and extract `envoy_windows_amd64.zip`
-2. Move `envoy.exe` to a permanent folder, for example:
-   `C:\Users\YOUR_USER\tools\envoy\`
+1. Download and extract `envforge_windows_amd64.zip`
+2. Move `envforge.exe` to a permanent folder, for example:
+   `C:\Users\YOUR_USER\tools\envforge\`
 3. Add that folder to your PATH:
    - Press `Win + S` and search for **"environment variables"**
    - Click **"Edit the system environment variables"**
    - Click **"Environment Variables..."**
    - Under **"User variables"**, select **Path** and click **Edit**
-   - Click **New** and add: `C:\Users\YOUR_USER\tools\envoy`
+   - Click **New** and add: `C:\Users\YOUR_USER\tools\envforge`
    - Click OK on all dialogs
 4. Open a **new** terminal and verify:
 ```bash
-   envoy --version
+   envforge --version
 ```
 
 ---
@@ -95,34 +95,34 @@ Download the latest release for your platform from
 1. Download and extract the `.tar.gz` for your architecture:
 ```bash
    # Apple Silicon (M1/M2/M3)
-   tar -xzf envoy_darwin_arm64.tar.gz
+   tar -xzf envforge_darwin_arm64.tar.gz
 
    # Intel
-   tar -xzf envoy_darwin_amd64.tar.gz
+   tar -xzf envforge_darwin_amd64.tar.gz
 ```
 2. Move the binary to `/usr/local/bin`:
 ```bash
-   mv envoy /usr/local/bin/envoy
-   chmod +x /usr/local/bin/envoy
+   mv envforge /usr/local/bin/envforge
+   chmod +x /usr/local/bin/envforge
 ```
 3. On first run, macOS may block the binary (Gatekeeper).
    If you see a security warning:
    - Open **System Settings** → **Privacy & Security**
-   - Scroll down and click **"Allow Anyway"** next to envoy
-   - Run `envoy --version` again and click **Open** on the dialog
+   - Scroll down and click **"Allow Anyway"** next to envforge
+   - Run `envforge --version` again and click **Open** on the dialog
 4. Verify:
 ```bash
-   envoy --version
+   envforge --version
 ```
 
 ---
 
 ### Linux Setup
 ```bash
-tar -xzf envoy_linux_amd64.tar.gz
-mv envoy /usr/local/bin/envoy
-chmod +x /usr/local/bin/envoy
-envoy --version
+tar -xzf envforge_linux_amd64.tar.gz
+mv envforge /usr/local/bin/envforge
+chmod +x /usr/local/bin/envforge
+envforge --version
 ```
 
 ---
@@ -134,7 +134,7 @@ envoy --version
 Print information about a `.env` file.
 
 ```bash
-$ envoy info .env
+$ envforge info .env
 File: .env
 Keys: 10
 Size: 287 bytes
@@ -158,7 +158,7 @@ Keys:
 Compare two `.env` files.
 
 ```bash
-$ envoy diff .env .env.example
+$ envforge diff .env .env.example
 MISSING in .env (1):
   + API_KEY
 
@@ -171,7 +171,7 @@ EXTRA in .env (1):
 Sync keys from `.env` to `.env.example` (strips values).
 
 ```bash
-$ envoy sync
+$ envforge sync
 Sync .env -> .env.example
 This will add missing keys from .env to .env.example (values will be stripped).
 Continue? [y/N]: y
@@ -183,12 +183,12 @@ Successfully synced to .env.example
 Validate required environment variables are set.
 
 ```bash
-$ envoy check --required DATABASE_URL,DB_HOST,API_KEY
+$ envforge check --required DATABASE_URL,DB_HOST,API_KEY
 Missing required environment variables:
   - API_KEY
 exit status 1
 
-$ envoy check --from .env.example
+$ envforge check --from .env.example
 All required environment variables are set
 ```
 
@@ -197,7 +197,7 @@ All required environment variables are set
 Scan source code for environment variable usage.
 
 ```bash
-$ envoy audit ./src --env-file .env.example
+$ envforge audit ./src --env-file .env.example
 
 USED but NOT DECLARED (2):
   + DATABASE_URL (src/db/connection.go:15)
@@ -214,7 +214,7 @@ Supported languages: Go, JavaScript/TypeScript, Python, Shell.
 Encrypt a `.env` file for safe sharing.
 
 ```bash
-$ envoy encrypt .env --key "your-secure-passphrase"
+$ envforge encrypt .env --key "your-secure-passphrase"
 Encrypted: .env -> .env.enc.b64
 ```
 
@@ -223,10 +223,10 @@ Encrypted: .env -> .env.enc.b64
 Decrypt an encrypted file.
 
 ```bash
-$ envoy decrypt .env.enc.b64 --key "your-secure-passphrase"
+$ envforge decrypt .env.enc.b64 --key "your-secure-passphrase"
 # Outputs decrypted content to stdout
 
-$ envoy decrypt .env.enc.b64 --key "your-secure-passphrase" --out .env.decrypted
+$ envforge decrypt .env.enc.b64 --key "your-secure-passphrase" --out .env.decrypted
 Decrypted: .env.enc.b64 -> .env.decrypted
 ```
 
@@ -235,7 +235,7 @@ Decrypted: .env.enc.b64 -> .env.decrypted
 Verify integrity of an encrypted file without decrypting.
 
 ```bash
-$ envoy verify .env.enc.b64 --key "your-secure-passphrase"
+$ envforge verify .env.enc.b64 --key "your-secure-passphrase"
 Integrity OK
 ```
 
@@ -244,7 +244,7 @@ Integrity OK
 Watch a `.env` file for changes and re-check automatically.
 
 ```bash
-$ envoy watch .env --exec "make restart"
+$ envforge watch .env --exec "make restart"
 Watching .env for changes... (Ctrl+C to stop)
 ```
 
@@ -253,7 +253,7 @@ Watching .env for changes... (Ctrl+C to stop)
 Generate a random 32-byte encryption key.
 
 ```bash
-$ envoy keygen
+$ envforge keygen
 a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2
 
 Store this key in a password manager!
@@ -265,7 +265,7 @@ Store this key in a password manager!
 
 ```bash
 # Check all env vars are configured
-$ envoy check --from .env.example
+$ envforge check --from .env.example
 All required environment variables are set
 
 # Start your app
@@ -279,7 +279,7 @@ $ make dev
 echo "NEW_FEATURE_FLAG=true" >> .env
 
 # Run audit to see if it's used anywhere
-$ envoy audit ./src --env-file .env.example
+$ envforge audit ./src --env-file .env.example
 USED but NOT DECLARED (1):
   + NEW_FEATURE_FLAG (src/features/flags.go:5)
 ```
@@ -288,7 +288,7 @@ USED but NOT DECLARED (1):
 
 ```bash
 # Sync new vars to .env.example
-$ envoy sync
+$ envforge sync
 Sync .env -> .env.example
 Continue? [y/N]: y
 Successfully synced to .env.example
@@ -297,7 +297,7 @@ Successfully synced to .env.example
 ### Code Review: Run Full Audit
 
 ```bash
-$ envoy audit ./src --env-file .env.example -v
+$ envforge audit ./src --env-file .env.example -v
 USED but NOT DECLARED (5):
   + DATABASE_URL (src/db.go:15)
   + API_KEY (src/client.go:10)
@@ -333,25 +333,25 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install envoy
-        run: go install github.com/Santiago1809/envoy/cmd/envoy@latest
+      - name: Install envforge
+        run: go install github.com/Santiago1809/envforge/cmd/envforge@latest
 
       - name: Check environment variables
-        run: envoy check --from .env.example
+        run: envforge check --from .env.example
 ```
 
 ### Docker Entrypoint
 
 ```dockerfile
 FROM golang:1.22-alpine AS builder
-RUN go install github.com/Santiago1809/envoy/cmd/envoy@latest
+RUN go install github.com/Santiago1809/envforge/cmd/envforge@latest
 
 FROM alpine:latest
-COPY --from=builder /go/bin/envoy /usr/local/bin/envoy
+COPY --from=builder /go/bin/envforge /usr/local/bin/envforge
 COPY .env.example /app/.env.example
 
 # Validate env vars before starting app
-ENTRYPOINT ["envoy", "check", "--from", ".env.example", "&&", "myapp"]
+ENTRYPOINT ["envforge", "check", "--from", ".env.example", "&&", "myapp"]
 ```
 
 ## Contributing

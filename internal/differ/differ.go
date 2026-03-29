@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/Santiago1809/envoy/internal/parser"
+	"github.com/Santiago1809/envforge/internal/parser"
 )
 
 type DiffType string

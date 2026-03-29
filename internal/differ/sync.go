@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Santiago1809/envoy/internal/parser"
+	"github.com/Santiago1809/envforge/internal/parser"
 )
 
 type SyncOptions struct {

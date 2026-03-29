@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Santiago1809/envoy/cli"
+	"github.com/Santiago1809/envforge/cli"
 )
 
 func main() {

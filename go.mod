@@ -1,4 +1,4 @@
-module github.com/Santiago1809/envoy
+module github.com/Santiago1809/envforge
 
 go 1.26.1
 
