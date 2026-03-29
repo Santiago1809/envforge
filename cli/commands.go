@@ -35,8 +35,8 @@ func joinInts(nums []int) string {
 
 var (
 	Version = "dev"
-	commit  = "unknown"
-	date    = "unknown"
+	Commit  = "unknown"
+	Date    = "unknown"
 	noColor bool
 )
 
@@ -94,8 +94,8 @@ var versionCmd = &cobra.Command{
 	Short: "Print version information",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("envforge version %s\n", Version)
-		fmt.Printf("  commit: %s\n", commit)
-		fmt.Printf("  date: %s\n", date)
+		fmt.Printf("  commit: %s\n", Commit)
+		fmt.Printf("  date:   %s\n", Date)
 	},
 }
 
@@ -237,7 +237,7 @@ var updateCmd = &cobra.Command{
 				return fmt.Errorf("failed to open zip: %w", err)
 			}
 
-			var exeReader io.Reader
+			var exeData []byte
 			for _, f := range reader.File {
 				if f.Name == "envforge.exe" {
 					exeFile, err := f.Open()
@@ -246,51 +246,37 @@ var updateCmd = &cobra.Command{
 						os.Remove(zipPath)
 						return fmt.Errorf("failed to open exe in zip: %w", err)
 					}
-					exeReader = exeFile
+					exeData, err = io.ReadAll(exeFile)
+					exeFile.Close()
+					if err != nil {
+						reader.Close()
+						os.Remove(zipPath)
+						return fmt.Errorf("failed to read exe: %w", err)
+					}
 					break
 				}
 			}
 			reader.Close()
 
-			if exeReader == nil {
+			if exeData == nil {
 				os.Remove(zipPath)
 				return fmt.Errorf("envforge.exe not found in zip")
 			}
 
-			newExePath := filepath.Join(installDir, "envforge_new.exe")
-			newExeFile, err := os.Create(newExePath)
-			if err != nil {
+			if len(exeData) < 1024*1024 {
 				os.Remove(zipPath)
-				return fmt.Errorf("failed to create new exe: %w", err)
+				return fmt.Errorf("extracted file too small (%d bytes)", len(exeData))
 			}
 
-			written, err := io.Copy(newExeFile, exeReader)
-			newExeFile.Close()
-			if err != nil {
+			if len(exeData) < 2 || exeData[0] != 'M' || exeData[1] != 'Z' {
 				os.Remove(zipPath)
-				os.Remove(newExePath)
-				return fmt.Errorf("failed to write exe: %w", err)
-			}
-
-			if written < 1024*1024 {
-				os.Remove(zipPath)
-				os.Remove(newExePath)
-				return fmt.Errorf("extracted file too small (%d bytes)", written)
-			}
-
-			header := make([]byte, 2)
-			headerFile, err := os.Open(newExePath)
-			if err != nil {
-				os.Remove(zipPath)
-				os.Remove(newExePath)
-				return fmt.Errorf("failed to validate exe: %w", err)
-			}
-			_, err = headerFile.Read(header)
-			headerFile.Close()
-			if err != nil || header[0] != 'M' || header[1] != 'Z' {
-				os.Remove(zipPath)
-				os.Remove(newExePath)
 				return fmt.Errorf("invalid exe header")
+			}
+
+			newExePath := filepath.Join(installDir, "envforge_new.exe")
+			if err := os.WriteFile(newExePath, exeData, 0755); err != nil {
+				os.Remove(zipPath)
+				return fmt.Errorf("failed to write exe: %w", err)
 			}
 
 			os.Remove(zipPath)
