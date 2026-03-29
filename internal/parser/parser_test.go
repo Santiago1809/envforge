@@ -155,7 +155,7 @@ func TestLoadReader(t *testing.T) {
 		},
 		{
 			name:  "postgresql URL with colons in value",
-			input: `DATABASE_URL=postgresql://user:pass@host:5432/db`,
+			input: "DATABASE_URL=postgresql://user:pass@host:5432/db",
 			expected: map[string]string{
 				"DATABASE_URL": "postgresql://user:pass@host:5432/db",
 			},

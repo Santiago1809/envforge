@@ -48,7 +48,10 @@ type Auditor struct {
 	ctx       context.Context
 }
 
-var DefaultExclusions = []string{"testdata", "vendor", "node_modules", ".git", "dist", "build", "bin"}
+var DefaultExclusions = []string{
+	"testdata", "vendor", "node_modules", ".git", "dist", "build", "bin",
+	".agents", ".claude", ".skills", "skills",
+}
 
 func New(rootDir string) *Auditor {
 	return &Auditor{
