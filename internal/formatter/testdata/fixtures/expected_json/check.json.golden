@@ -4,5 +4,6 @@
   "missing": ["API_KEY"],
   "present": ["DATABASE_URL", "DB_HOST"],
   "empty": [],
-  "valid": false
+  "valid": false,
+  "type_errors": null
 }

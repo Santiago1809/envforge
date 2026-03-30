@@ -90,7 +90,9 @@ func (f *TextFormatter) renderDiff(result *differ.DiffOutput) error {
 }
 
 func (f *TextFormatter) renderCheck(result *check.CheckResult) error {
-	if result.Valid {
+	isValid := result.Valid && len(result.TypeErrors) == 0
+
+	if isValid {
 		fmt.Println("All required environment variables are set")
 		return nil
 	}
@@ -106,6 +108,13 @@ func (f *TextFormatter) renderCheck(result *check.CheckResult) error {
 		fmt.Println("Required environment variables with empty values:")
 		for _, k := range result.EmptyKeys {
 			fmt.Printf("  - %s\n", k)
+		}
+	}
+
+	if len(result.TypeErrors) > 0 {
+		fmt.Println("Type errors:")
+		for _, e := range result.TypeErrors {
+			fmt.Printf("  - %s: %s\n", e.Name, e.Message)
 		}
 	}
 
@@ -191,12 +200,13 @@ func (f *JSONFormatter) convertDiff(d *differ.DiffOutput) DiffResultJSON {
 
 func (f *JSONFormatter) convertCheck(c *check.CheckResult) CheckResultJSON {
 	return CheckResultJSON{
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
-		EnvFile:   "", // not available; maybe from context
-		Missing:   c.MissingKeys,
-		Present:   c.PresentKeys,
-		Empty:     c.EmptyKeys,
-		Valid:     c.Valid,
+		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+		EnvFile:    "", // not available; maybe from context
+		Missing:    c.MissingKeys,
+		Present:    c.PresentKeys,
+		Empty:      c.EmptyKeys,
+		Valid:      c.Valid,
+		TypeErrors: c.TypeErrors,
 	}
 }
 

@@ -20,6 +20,7 @@ import (
 	"github.com/Santiago1809/envforge/internal/differ"
 	"github.com/Santiago1809/envforge/internal/formatter"
 	"github.com/Santiago1809/envforge/internal/parser"
+	"github.com/Santiago1809/envforge/internal/schema"
 	"github.com/Santiago1809/envforge/internal/watcher"
 
 	"github.com/spf13/cobra"
@@ -563,19 +564,65 @@ var checkCmd = &cobra.Command{
 	Use:   "check",
 	Short: "Validate required environment variables",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		required, _ := cmd.Flags().GetStringSlice("required")
 		fromFile, _ := cmd.Flags().GetString("from")
-		allowEmpty := cmd.Flags().Changed("allow-empty")
-		prefix, _ := cmd.Flags().GetString("prefix")
+		schemaPath, _ := cmd.Flags().GetString("schema")
 
-		opts := &check.Options{
-			Required:   required,
-			FromFile:   fromFile,
-			AllowEmpty: allowEmpty,
-			Prefix:     prefix,
+		envFile := fromFile
+		if envFile == "" && len(args) > 0 {
+			envFile = args[0]
+		}
+		if envFile == "" {
+			envFile = ".env"
 		}
 
-		result, err := check.Check(opts)
+		var s *schema.Schema
+		var schemaErr error
+
+		if schemaPath != "" {
+			s, schemaErr = schema.Parse(schemaPath)
+			if schemaErr != nil {
+				return fmt.Errorf("failed to parse schema: %w", schemaErr)
+			}
+		} else {
+			dir := filepath.Dir(envFile)
+			if dir == "." {
+				dir, _ = os.Getwd()
+			}
+			autoSchemaPath := filepath.Join(dir, ".env.schema")
+			s, schemaErr = schema.Parse(autoSchemaPath)
+			if schemaErr != nil {
+				return fmt.Errorf("failed to parse schema: %w", schemaErr)
+			}
+			if s == nil && outputFormat != "json" {
+				envVars := make(map[string]string)
+				env, err := parser.Load(envFile)
+				if err != nil && !os.IsNotExist(err) {
+					return fmt.Errorf("failed to load env file: %w", err)
+				}
+				if err == nil {
+					for _, key := range env.Keys() {
+						val, _ := env.Get(key)
+						envVars[key] = val
+					}
+				}
+
+				inferredSchema := schema.Infer(envVars)
+				if len(inferredSchema.Vars) > 0 {
+					editedSchema, err := schema.RunSchemaEditor(inferredSchema, envVars, autoSchemaPath)
+					if err != nil {
+						return fmt.Errorf("schema editor error: %w", err)
+					}
+					if editedSchema == nil {
+						fmt.Println("Schema creation cancelled")
+					} else {
+						s = editedSchema
+						fmt.Printf("Schema saved to %s\n", autoSchemaPath)
+					}
+				}
+			}
+		}
+
+		result, err := check.RunWithSchema(envFile, s)
 		if err != nil {
 			return err
 		}
@@ -585,7 +632,9 @@ var checkCmd = &cobra.Command{
 			return f.Render(result)
 		}
 
-		if !result.Valid {
+		isValid := result.Valid && len(result.TypeErrors) == 0
+
+		if !isValid {
 			if len(result.MissingKeys) > 0 {
 				fmt.Println("Missing required environment variables:")
 				for _, k := range result.MissingKeys {
@@ -596,6 +645,12 @@ var checkCmd = &cobra.Command{
 				fmt.Println("Required environment variables with empty values:")
 				for _, k := range result.EmptyKeys {
 					fmt.Printf("  - %s\n", k)
+				}
+			}
+			if len(result.TypeErrors) > 0 {
+				fmt.Println("Type errors:")
+				for _, e := range result.TypeErrors {
+					fmt.Printf("  - %s: %s\n", e.Name, e.Message)
 				}
 			}
 			os.Exit(1)
@@ -611,6 +666,7 @@ func init() {
 	checkCmd.Flags().String("from", "", "use keys from .env.example file")
 	checkCmd.Flags().Bool("allow-empty", false, "allow empty values")
 	checkCmd.Flags().String("prefix", "", "filter by key prefix (e.g. AWS_)")
+	checkCmd.Flags().String("schema", "", "path to .env.schema file")
 }
 
 var encryptCmd = &cobra.Command{

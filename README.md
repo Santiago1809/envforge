@@ -323,7 +323,89 @@ envforge check --from .env.example --allow-empty
 - `--from, -f`: Use keys from `.env.example` file
 - `--allow-empty`: Allow empty values
 - `--prefix`: Filter by key prefix (e.g. `AWS_`)
+- `--schema`: Path to `.env.schema` file (optional)
 - `--format`: Global flag: `text` (default) or `json`
+
+---
+
+## Schema Validation
+
+Envforge supports type validation for environment variables using an optional `.env.schema` file.
+
+### Schema File Format
+
+Create a `.env.schema` file next to your `.env`:
+
+```bash
+# .env.schema
+PORT=int
+DATABASE_URL=url
+DEBUG=bool
+RATE=float
+EMAIL=email
+APP_ENV=enum:development,staging,production
+PATTERN=regex:^[a-z]+$
+NAME=string
+```
+
+**Supported types:**
+
+| Type | Description | Example Value |
+|------|-------------|---------------|
+| `string` | Text value (default) | `hello` |
+| `int` | Integer | `8080` |
+| `float` | Decimal number | `3.14` |
+| `bool` | Boolean (`true`, `false`, `1`, `0`, `yes`, `no`) | `true` |
+| `url` | Valid URL with scheme and host | `https://localhost:5432` |
+| `email` | Valid email address | `user@example.com` |
+| `enum` | One of predefined values | `development` |
+| `regex` | Must match a regex pattern | `^[a-z]+$` |
+
+### Automatic Schema Inference
+
+When running `envforge check` without a schema file:
+
+1. If no `.env.schema` exists in the same directory as your `.env`, envforge will **automatically infer types** from your current values
+2. An interactive TUI appears where you can review and adjust the inferred types
+3. Press `s` to save the schema to `.env.schema`
+4. Press `q` to cancel without saving
+
+```bash
+# First run - no schema exists yet
+$ envforge check --from .env.example
+```
+
+The TUI shows:
+- **VARIABLE**: The env var name
+- **INFERRED**: Auto-detected type (gray, hint)
+- **TYPE**: Editable type (green if modified)
+- **SAMPLE VALUE**: Current value from your .env
+
+**TUI Controls:**
+- `j` / `k` or `↓` / `↑`: Navigate
+- `←` / `→`: Change type (cycles: string → int → float → bool → url → email → string)
+- `s`: Save schema and continue
+- `q` / `Esc`: Cancel (skip validation)
+
+### Using Schema Explicitly
+
+```bash
+# Specify schema path explicitly
+envforge check --schema ./custom.schema
+
+# Use with JSON output (TUI is skipped in JSON mode)
+envforge check --format json --schema .env.schema
+```
+
+### CI/CD with Schema
+
+```yaml
+# GitHub Actions
+- name: Check environment variables with schema
+  run: envforge check --from .env.example --format json
+  env:
+    # Schema validation happens automatically if .env.schema exists
+```
 
 ---
 

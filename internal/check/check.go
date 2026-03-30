@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Santiago1809/envforge/internal/parser"
+	"github.com/Santiago1809/envforge/internal/schema"
 )
 
 type CheckResult struct {
@@ -16,6 +17,7 @@ type CheckResult struct {
 	MissingCount  int
 	EmptyCount    int
 	TotalRequired int
+	TypeErrors    []schema.ValidationError `json:"type_errors"`
 }
 
 type Options struct {
@@ -164,4 +166,34 @@ func GetAllWithPrefix(prefix string) map[string]string {
 		}
 	}
 	return result
+}
+
+func RunWithSchema(envFile string, s *schema.Schema) (*CheckResult, error) {
+	opts := &Options{
+		FromFile:   envFile,
+		AllowEmpty: true,
+	}
+
+	result, err := Check(opts)
+	if err != nil {
+		return nil, err
+	}
+
+	if s != nil {
+		envVars := make(map[string]string)
+		if envFile != "" {
+			env, err := parser.Load(envFile)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load env file: %w", err)
+			}
+			for _, key := range env.Keys() {
+				val, _ := env.Get(key)
+				envVars[key] = val
+			}
+		}
+
+		result.TypeErrors = s.Validate(envVars)
+	}
+
+	return result, nil
 }

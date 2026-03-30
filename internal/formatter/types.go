@@ -2,6 +2,7 @@ package formatter
 
 import (
 	"github.com/Santiago1809/envforge/internal/audittypes"
+	"github.com/Santiago1809/envforge/internal/schema"
 )
 
 type OutputFormat string
@@ -33,12 +34,13 @@ type DiffResultJSON struct {
 }
 
 type CheckResultJSON struct {
-	Timestamp string   `json:"timestamp"`
-	EnvFile   string   `json:"env_file"`
-	Missing   []string `json:"missing"`
-	Present   []string `json:"present"`
-	Empty     []string `json:"empty"`
-	Valid     bool     `json:"valid"`
+	Timestamp  string                   `json:"timestamp"`
+	EnvFile    string                   `json:"env_file"`
+	Missing    []string                 `json:"missing"`
+	Present    []string                 `json:"present"`
+	Empty      []string                 `json:"empty"`
+	Valid      bool                     `json:"valid"`
+	TypeErrors []schema.ValidationError `json:"type_errors"`
 }
 
 type InfoResultJSON struct {
