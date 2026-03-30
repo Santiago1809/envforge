@@ -567,7 +567,7 @@ var auditCmd = &cobra.Command{
 
 func init() {
 	auditCmd.Flags().String("env-file", "", "path to .env.example file")
-	auditCmd.Flags().StringSlice("lang", []string{}, "languages to scan: go, js, py, sh (comma-separated)")
+	auditCmd.Flags().StringSlice("lang", []string{}, "languages to scan: go, js, ts, py, sh, java, php, ruby, cs (comma-separated)")
 	auditCmd.Flags().StringSlice("exclude", []string{}, "additional directories to exclude (appends to default: testdata, vendor, node_modules, .git, dist, build, bin, .agents, .claude, .skills, skills)")
 	auditCmd.Flags().BoolP("verbose", "v", false, "show declared and used variables")
 }

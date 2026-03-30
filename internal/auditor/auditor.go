@@ -3,35 +3,14 @@ package auditor
 import (
 	"context"
 	"fmt"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"sync"
 
 	"github.com/Santiago1809/envforge/internal/audittypes"
 )
-
-type Language string
-
-const (
-	LangGo     Language = "go"
-	LangJS     Language = "js"
-	LangPython Language = "py"
-	LangShell  Language = "sh"
-	LangAll    Language = "all"
-)
-
-type EnvUsage struct {
-	Key      string
-	File     string
-	Lines    []int
-	Language Language
-}
 
 type AuditResult struct {
 	UsedNotDeclared []EnvUsage
@@ -61,7 +40,7 @@ var DefaultExclusions = []string{
 func New(rootDir string) *Auditor {
 	return &Auditor{
 		rootDir:   rootDir,
-		languages: []Language{LangGo, LangJS, LangPython, LangShell},
+		languages: []Language{LangGo, LangJS, LangTS, LangPython, LangShell, LangJava, LangPHP, LangRuby, LangCSharp},
 		exclude:   DefaultExclusions,
 		declared:  make(map[string]bool),
 	}
@@ -157,12 +136,12 @@ func (a *Auditor) collectFiles() ([]string, error) {
 			return nil
 		}
 
-		ext := filepath.Ext(path)
-		lang := a.languageFromExt(ext)
-		if lang == "" {
+		detector, err := GetDetectorForFile(path)
+		if err != nil {
 			return nil
 		}
 
+		lang := detector.Language()
 		for _, l := range a.languages {
 			if l == LangAll || l == lang {
 				files = append(files, path)
@@ -176,20 +155,6 @@ func (a *Auditor) collectFiles() ([]string, error) {
 	return files, err
 }
 
-func (a *Auditor) languageFromExt(ext string) Language {
-	switch ext {
-	case ".go":
-		return LangGo
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs":
-		return LangJS
-	case ".py":
-		return LangPython
-	case ".sh", ".bash", ".zsh":
-		return LangShell
-	}
-	return ""
-}
-
 func (a *Auditor) auditFile(path string) {
 	defer a.wg.Done()
 
@@ -197,241 +162,21 @@ func (a *Auditor) auditFile(path string) {
 		return
 	}
 
-	ext := filepath.Ext(path)
-	lang := a.languageFromExt(ext)
-
-	var vars []EnvUsage
-	var err error
-
-	switch lang {
-	case LangGo:
-		vars, err = a.auditGoFile(path)
-	case LangJS:
-		vars, err = a.auditJSFile(path)
-	case LangPython:
-		vars, err = a.auditPythonFile(path)
-	case LangShell:
-		vars, err = a.auditShellFile(path)
-	}
-
+	detector, err := GetDetectorForFile(path)
 	if err != nil {
 		return
 	}
 
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+
+	vars, _, _ := detector.Detect(path, string(data))
+
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	a.results = append(a.results, vars...)
-}
-
-func (a *Auditor) auditGoFile(path string) ([]EnvUsage, error) {
-	fset := token.NewFileSet()
-	node, err := parser.ParseFile(fset, path, nil, parser.ParseComments)
-	if err != nil {
-		return nil, err
-	}
-
-	var vars []EnvUsage
-
-	ast.Inspect(node, func(n ast.Node) bool {
-		call, ok := n.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-
-		sel, ok := call.Fun.(*ast.SelectorExpr)
-		if !ok {
-			return true
-		}
-
-		ident, ok := sel.X.(*ast.Ident)
-		if !ok {
-			return true
-		}
-
-		if ident.Name == "os" && (sel.Sel.Name == "Getenv" || sel.Sel.Name == "LookupEnv") {
-			if len(call.Args) > 0 {
-				if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
-					key := strings.Trim(lit.Value, `"`)
-					pos := fset.Position(call.Pos())
-					vars = append(vars, EnvUsage{
-						Key:      key,
-						File:     path,
-						Lines:    []int{pos.Line},
-						Language: LangGo,
-					})
-				}
-			}
-		}
-
-		if ident.Name == "viper" && (sel.Sel.Name == "Get" || sel.Sel.Name == "Set") {
-			if len(call.Args) > 0 {
-				if lit, ok := call.Args[0].(*ast.BasicLit); ok && lit.Kind == token.STRING {
-					key := strings.Trim(lit.Value, `"`)
-					pos := fset.Position(call.Pos())
-					vars = append(vars, EnvUsage{
-						Key:      key,
-						File:     path,
-						Lines:    []int{pos.Line},
-						Language: LangGo,
-					})
-				}
-			}
-		}
-
-		return true
-	})
-
-	return vars, nil
-}
-
-var jsProcessEnvPattern = regexp.MustCompile(`process\.env\.([A-Z_][A-Z0-9_]*)`)
-var jsDotEnvPattern = regexp.MustCompile(`\.env\.([A-Z_][A-Z0-9_]*)`)
-var jsProcessEnvBracketPattern = regexp.MustCompile(`process\.env\[["']([A-Z_][A-Z0-9_]*)["']\]`)
-
-func (a *Auditor) auditJSFile(path string) ([]EnvUsage, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	content := string(data)
-	lines := strings.Split(content, "\n")
-
-	var vars []EnvUsage
-
-	for i, line := range lines {
-		matches := jsProcessEnvPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 && match[1] != "" {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangJS,
-				})
-			}
-		}
-
-		matches = jsDotEnvPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 && match[1] != "" {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangJS,
-				})
-			}
-		}
-
-		matches = jsProcessEnvBracketPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 && match[1] != "" {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangJS,
-				})
-			}
-		}
-	}
-
-	return vars, nil
-}
-
-var pythonOsEnvironPattern = regexp.MustCompile(`os\.environ(?:ment)?\[["']([A-Z_][A-Z0-9_]*)["']\]`)
-var pythonOsGetenvPattern = regexp.MustCompile(`os\.getenv\(["']([A-Z_][A-Z0-9_]*)["']`)
-var pythonOsEnvironGetPattern = regexp.MustCompile(`os\.environ(?:ment)?\.get\(["']([A-Z_][A-Z0-9_]*)["']`)
-
-func (a *Auditor) auditPythonFile(path string) ([]EnvUsage, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	content := string(data)
-	lines := strings.Split(content, "\n")
-
-	var vars []EnvUsage
-
-	for i, line := range lines {
-		matches := pythonOsEnvironPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangPython,
-				})
-			}
-		}
-
-		matches = pythonOsGetenvPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangPython,
-				})
-			}
-		}
-
-		matches = pythonOsEnvironGetPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			if len(match) > 1 {
-				vars = append(vars, EnvUsage{
-					Key:      match[1],
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangPython,
-				})
-			}
-		}
-	}
-
-	return vars, nil
-}
-
-var shellVarPattern = regexp.MustCompile(`\$([A-Z_][A-Z0-9_]*)|\$\{([A-Z_][A-Z0-9_]*)\}`)
-
-func (a *Auditor) auditShellFile(path string) ([]EnvUsage, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	content := string(data)
-	lines := strings.Split(content, "\n")
-
-	var vars []EnvUsage
-
-	for i, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), "#") {
-			continue
-		}
-
-		matches := shellVarPattern.FindAllStringSubmatch(line, -1)
-		for _, match := range matches {
-			key := match[1]
-			if key == "" {
-				key = match[2]
-			}
-			if key != "" {
-				vars = append(vars, EnvUsage{
-					Key:      key,
-					File:     path,
-					Lines:    []int{i + 1},
-					Language: LangShell,
-				})
-			}
-		}
-	}
-
-	return vars, nil
 }
 
 func (a *Auditor) buildResult() (*AuditResult, error) {
@@ -480,7 +225,6 @@ func (a *Auditor) buildResult() (*AuditResult, error) {
 		result.UsedNotDeclared = append(result.UsedNotDeclared, r)
 	}
 
-	// Set metadata
 	result.Directory = a.rootDir
 	if len(a.languages) == 0 {
 		result.Language = ""
@@ -510,8 +254,6 @@ func AuditDir(rootDir string, envFile string, languages []Language, exclude []st
 	return auditor.Run()
 }
 
-// GroupEnvUsagesByKey groups EnvUsage entries by key, aggregating all file references
-// for each unique key. It returns a slice of audittypes.VarRef.
 func GroupEnvUsagesByKey(usages []EnvUsage) []audittypes.VarRef {
 	keyMap := make(map[string]*audittypes.VarRef)
 
@@ -528,12 +270,10 @@ func GroupEnvUsagesByKey(usages []EnvUsage) []audittypes.VarRef {
 		})
 	}
 
-	// Convert map to slice
 	result := make([]audittypes.VarRef, 0, len(keyMap))
 	for _, ref := range keyMap {
 		result = append(result, *ref)
 	}
-	// Sort by key for deterministic output
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Key < result[j].Key
 	})

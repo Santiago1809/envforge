@@ -295,12 +295,26 @@ envforge audit . --env-file .env.example --exclude coverage,build
 **Flags:**
 
 - `--env-file, -e`: Path to `.env.example` file (default: `.env.example`)
-- `--lang, -l`: Languages to scan: `go`, `js`, `py`, `sh` (comma-separated)
+- `--lang, -l`: Languages to scan: `go`, `js`, `ts`, `py`, `sh`, `java`, `php`, `ruby`, `cs` (comma-separated)
 - `--exclude, -x`: Additional directories to exclude (appends to defaults: `testdata, vendor, node_modules, .git, dist, build, bin, .agents, .claude, .skills, skills`)
 - `--verbose, -v`: Show declared and used variables
 - `--format`: Global flag: `text` (default) or `json`
 
-**Supported languages:** Go, JavaScript/TypeScript, Python, Shell
+**Supported languages & frameworks:**
+
+| Language   | Extensions      | Frameworks Detected                            | Usage Patterns                              |
+|------------|-----------------|-----------------------------------------------|---------------------------------------------|
+| Go         | `.go`           | Gin, Fiber, GORM                              | `os.Getenv`, `viper.Get`                    |
+| JavaScript | `.js`, `.jsx`   | Next.js, Vue, Angular, React, Node, Bun      | `process.env`, `import.meta.env`, `Bun.env` |
+| TypeScript | `.ts`, `.tsx`   | Next.js, Vue, Angular, React, Bun            | `process.env`, `import.meta.env`, `Bun.env` |
+| Python     | `.py`           | FastAPI, Django                               | `os.environ`, `os.getenv`                   |
+| Shell      | `.sh`, `.bash`  | Bash/Zsh scripts                             | `$VAR`, `${VAR}`                            |
+| Java       | `.java`         | Spring Boot                                   | `System.getenv`, `@Value`, `${}`           |
+| PHP        | `.php`          | Laravel                                       | `$_ENV`, `env()`, `$_SERVER`                |
+| Ruby       | `.rb`           | Rails                                         | `ENV.fetch`, `ENV[]`, `Rails.credentials`  |
+| C#         | `.cs`           | .NET (ASP.NET Core, MVC)                      | `Environment.GetEnvironmentVariable`, `IConfiguration` |
+
+Envforge uses **semantic detection** to identify environment variable usage and automatically detects the framework you're using based on config files (e.g., `package.json`, `go.mod`, `pom.xml`, `Gemfile`).
 
 ---
 
