@@ -319,16 +319,17 @@ var updateCmd = &cobra.Command{
 			newExePathAbs := filepath.Join(installDirAbs, "envforge_new.exe")
 
 			pid := os.Getpid()
-			batchContent := fmt.Sprintf(`@echo off
-:waitloop
-tasklist /FI "PID eq %d" 2>nul | findstr %d > nul
-if not errorlevel 1 (
-	timeout /t 1 /nobreak > nul
-	goto waitloop
-)
-move /y "%s" "%s"
-del "%%~f0"
-`, pid, pid, newExePathAbs, selfPathAbs)
+			var sb strings.Builder
+			sb.WriteString("@echo off\n:waitloop\ntasklist /FI \"PID eq ")
+			sb.WriteString(strconv.Itoa(pid))
+			sb.WriteString("\" 2>nul | findstr ")
+			sb.WriteString(strconv.Itoa(pid))
+			sb.WriteString(" > nul\nif not errorlevel 1 (\n\ttimeout /t 1 /nobreak > nul\n\tgoto waitloop\n)\nmove /y \"")
+			sb.WriteString(newExePathAbs)
+			sb.WriteString("\" \"")
+			sb.WriteString(selfPathAbs)
+			sb.WriteString("\"\ndel \"%%~f0\"\n")
+			batchContent := sb.String()
 
 			batchPath := filepath.Join(os.TempDir(), "envforge_update.bat")
 			if err := os.WriteFile(batchPath, []byte(batchContent), 0644); err != nil {
@@ -578,6 +579,9 @@ var checkCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fromFile, _ := cmd.Flags().GetString("from")
 		schemaPath, _ := cmd.Flags().GetString("schema")
+		required, _ := cmd.Flags().GetStringSlice("required")
+		allowEmpty, _ := cmd.Flags().GetBool("allow-empty")
+		prefix, _ := cmd.Flags().GetString("prefix")
 
 		envFile := fromFile
 		if envFile == "" && len(args) > 0 {
@@ -634,7 +638,7 @@ var checkCmd = &cobra.Command{
 			}
 		}
 
-		result, err := check.RunWithSchema(envFile, s)
+		result, err := check.RunWithSchema(envFile, s, required, allowEmpty, prefix)
 		if err != nil {
 			return err
 		}

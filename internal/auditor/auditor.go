@@ -42,7 +42,7 @@ func New(rootDir string) *Auditor {
 		rootDir:   rootDir,
 		languages: []Language{LangGo, LangJS, LangTS, LangPython, LangShell, LangJava, LangPHP, LangRuby, LangCSharp},
 		exclude:   DefaultExclusions,
-		declared:  make(map[string]bool),
+		declared:  make(map[string]bool, 50), // typical env vars
 	}
 }
 
@@ -51,7 +51,7 @@ func (a *Auditor) SetLanguages(langs []Language) {
 }
 
 func (a *Auditor) SetExclude(exclude []string) {
-	seen := make(map[string]bool)
+	seen := make(map[string]bool, len(a.exclude))
 	for _, e := range a.exclude {
 		seen[e] = true
 	}
@@ -115,7 +115,7 @@ func (a *Auditor) loadDeclaredVars() error {
 }
 
 func (a *Auditor) collectFiles() ([]string, error) {
-	var files []string
+	files := make([]string, 0, 100) // preallocate with capacity hint
 
 	err := filepath.WalkDir(a.rootDir, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
@@ -199,7 +199,7 @@ func (a *Auditor) buildResult() (*AuditResult, error) {
 		}
 	}
 
-	keyToUsage := make(map[string]EnvUsage)
+	keyToUsage := make(map[string]EnvUsage, len(a.results))
 	for _, r := range a.results {
 		if !a.declared[r.Key] {
 			mapKey := r.Key + "|" + r.File
@@ -255,7 +255,7 @@ func AuditDir(rootDir string, envFile string, languages []Language, exclude []st
 }
 
 func GroupEnvUsagesByKey(usages []EnvUsage) []audittypes.VarRef {
-	keyMap := make(map[string]*audittypes.VarRef)
+	keyMap := make(map[string]*audittypes.VarRef, len(usages))
 
 	for _, u := range usages {
 		ref, ok := keyMap[u.Key]

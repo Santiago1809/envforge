@@ -200,3 +200,33 @@ func TestCheckMultipleMissing(t *testing.T) {
 		t.Errorf("MissingCount = %d, want 2", result.MissingCount)
 	}
 }
+
+func TestCheckPartialKeyShouldNotMatch(t *testing.T) {
+	// Ensure PORT is not set
+	os.Unsetenv("PORT")
+	// Set APP_PORT
+	os.Setenv("APP_PORT", "3000")
+	defer os.Unsetenv("APP_PORT")
+
+	result, err := CheckRequiredKeys([]string{"PORT"}, false)
+	if err != nil {
+		t.Fatalf("CheckRequiredKeys() error = %v", err)
+	}
+
+	// Should be invalid because PORT is missing
+	if result.Valid {
+		t.Error("expected invalid result")
+	}
+
+	// MissingKeys should contain exactly "PORT"
+	if len(result.MissingKeys) != 1 || result.MissingKeys[0] != "PORT" {
+		t.Errorf("MissingKeys = %v, want [\"PORT\"]", result.MissingKeys)
+	}
+
+	// Ensure APP_PORT is not in MissingKeys
+	for _, k := range result.MissingKeys {
+		if k == "APP_PORT" {
+			t.Error("APP_PORT should not be in MissingKeys")
+		}
+	}
+}

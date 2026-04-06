@@ -89,8 +89,8 @@ func (d *Differ) Diff() (*DiffOutput, error) {
 	keys1 := env1.Keys()
 	keys2 := env2.Keys()
 
-	set1 := make(map[string]bool)
-	set2 := make(map[string]bool)
+	set1 := make(map[string]bool, len(keys1))
+	set2 := make(map[string]bool, len(keys2))
 
 	for _, k := range keys1 {
 		set1[k] = true
@@ -99,7 +99,7 @@ func (d *Differ) Diff() (*DiffOutput, error) {
 		set2[k] = true
 	}
 
-	var results []DiffResult
+	results := make([]DiffResult, 0, len(keys1)+len(keys2))
 	missingCount := 0
 	extraCount := 0
 	matchCount := 0

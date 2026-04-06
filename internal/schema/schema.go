@@ -50,8 +50,8 @@ func Parse(path string) (*Schema, error) {
 		return nil, err
 	}
 
-	schema := &Schema{Vars: make(map[string]VarSchema)}
 	lines := strings.Split(string(content), "\n")
+	schema := &Schema{Vars: make(map[string]VarSchema, len(lines)/2)} // estimate capacity
 
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
@@ -90,7 +90,7 @@ func Parse(path string) (*Schema, error) {
 }
 
 func Infer(vars map[string]string) *Schema {
-	schema := &Schema{Vars: make(map[string]VarSchema)}
+	schema := &Schema{Vars: make(map[string]VarSchema, len(vars))}
 
 	for name, value := range vars {
 		varType := inferType(value)
@@ -136,7 +136,7 @@ func inferType(value string) VarType {
 }
 
 func (s *Schema) Validate(vars map[string]string) []ValidationError {
-	var errors []ValidationError
+	errors := make([]ValidationError, 0, len(s.Vars))
 
 	for name, varSchema := range s.Vars {
 		value, exists := vars[name]

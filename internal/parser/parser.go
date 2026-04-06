@@ -8,8 +8,16 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"unicode"
 )
+
+// builderPool reuses strings.Builder instances to reduce allocations
+var builderPool = sync.Pool{
+	New: func() interface{} {
+		return &strings.Builder{}
+	},
+}
 
 type EnvFile struct {
 	entries map[string]string
@@ -27,9 +35,11 @@ func (e *ParseError) Error() string {
 }
 
 func NewEnvFile() *EnvFile {
+	entries := make(map[string]string, 16)
+	order := make([]string, 0, 16)
 	return &EnvFile{
-		entries: make(map[string]string),
-		order:   []string{},
+		entries: entries,
+		order:   order,
 	}
 }
 
@@ -48,7 +58,9 @@ func LoadReader(r io.Reader) (*EnvFile, error) {
 	scanner := bufio.NewScanner(r)
 	lineNum := 0
 	var currentKey string
-	var currentValue strings.Builder
+	currentValue := builderPool.Get().(*strings.Builder)
+	currentValue.Reset()
+	defer builderPool.Put(currentValue)
 	inMultiline := false
 	quoteChar := rune(0)
 
@@ -132,8 +144,16 @@ func LoadReader(r io.Reader) (*EnvFile, error) {
 }
 
 func parseLine(line string, lineNum int) (string, string, error) {
-	var keyBuilder strings.Builder
-	var valueBuilder strings.Builder
+	// Get builders from pool to reduce allocations
+	keyBuilder := builderPool.Get().(*strings.Builder)
+	keyBuilder.Reset()
+	valueBuilder := builderPool.Get().(*strings.Builder)
+	valueBuilder.Reset()
+	defer func() {
+		builderPool.Put(keyBuilder)
+		builderPool.Put(valueBuilder)
+	}()
+
 	state := 0
 	var quoteChar rune
 

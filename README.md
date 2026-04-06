@@ -5,6 +5,23 @@
 [![Go Version](https://img.shields.io/badge/Go-1.26+-00ADD8?style=flat&logo=go)](https://golang.org/dl/)
 [![Platform Support](https://img.shields.io/badge/platform-linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Santiago1809/envforge/releases)
 
+## 🚨 Stop shipping broken environment variables
+
+Envforge is a CLI that:
+
+- Fails your app if env vars are missing
+- Finds env vars your code actually uses
+- Keeps `.env` and `.env.example` in sync
+
+### Example
+
+```bash
+envforge audit . --env-file .env.example
+
+USED but NOT DECLARED:
+  DATABASE_URL
+  STRIPE_KEY
+```
 A smart environment variable manager for developers. Envforge helps you compare, sync, audit, encrypt, and watch your `.env` files with zero configuration.
 
 ## The Problem

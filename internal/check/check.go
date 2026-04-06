@@ -28,14 +28,15 @@ type Options struct {
 }
 
 func Check(opts *Options) (*CheckResult, error) {
+	reqCount := len(opts.Required)
 	result := &CheckResult{
 		Valid:         true,
-		MissingKeys:   []string{},
-		EmptyKeys:     []string{},
-		PresentKeys:   []string{},
+		MissingKeys:   make([]string, 0, reqCount),
+		EmptyKeys:     make([]string, 0, reqCount),
+		PresentKeys:   make([]string, 0, reqCount),
 		MissingCount:  0,
 		EmptyCount:    0,
-		TotalRequired: len(opts.Required),
+		TotalRequired: reqCount,
 	}
 
 	required := opts.Required
@@ -49,16 +50,6 @@ func Check(opts *Options) (*CheckResult, error) {
 		}
 		if len(required) == 0 {
 			required = envFile.Keys()
-		} else {
-			seen := make(map[string]bool)
-			for _, k := range required {
-				seen[k] = true
-			}
-			for _, k := range envFile.Keys() {
-				if !seen[k] {
-					required = append(required, k)
-				}
-			}
 		}
 		result.TotalRequired = len(required)
 	}
@@ -153,8 +144,10 @@ func GetEnvOrDefault(key, defaultValue string) string {
 }
 
 func GetAllWithPrefix(prefix string) map[string]string {
-	result := make(map[string]string)
-	for _, env := range os.Environ() {
+	envVars := os.Environ()
+	// Estimate capacity: typically half of all env vars will match prefix? Use total as upper bound
+	result := make(map[string]string, len(envVars))
+	for _, env := range envVars {
 		parts := strings.SplitN(env, "=", 2)
 		if len(parts) != 2 {
 			continue
@@ -168,10 +161,12 @@ func GetAllWithPrefix(prefix string) map[string]string {
 	return result
 }
 
-func RunWithSchema(envFile string, s *schema.Schema) (*CheckResult, error) {
+func RunWithSchema(envFile string, s *schema.Schema, required []string, allowEmpty bool, prefix string) (*CheckResult, error) {
 	opts := &Options{
 		FromFile:   envFile,
-		AllowEmpty: true,
+		Required:   required,
+		AllowEmpty: allowEmpty,
+		Prefix:     prefix,
 	}
 
 	result, err := Check(opts)
@@ -186,7 +181,10 @@ func RunWithSchema(envFile string, s *schema.Schema) (*CheckResult, error) {
 			if err != nil {
 				return nil, fmt.Errorf("failed to load env file: %w", err)
 			}
-			for _, key := range env.Keys() {
+			keys := env.Keys()
+			// Preallocate map with estimated capacity
+			envVars = make(map[string]string, len(keys))
+			for _, key := range keys {
 				val, _ := env.Get(key)
 				envVars[key] = val
 			}
